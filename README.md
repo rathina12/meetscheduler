@@ -4,6 +4,8 @@ A full-stack enterprise-grade meeting scheduling application with Google Calenda
 
 ---
 
+> **Implementation status (October 2026):** The `feature/meet-scheduler-ui-reliability` branch introduces a responsive visual refresh, fixes edit-time reschedule detection, and offers genuine one-time iCalendar (.ics) export. Google/Microsoft two-way sync is **not implemented**: earlier backend code simulated tokens and sync counts. Those paths now fail closed, rather than falsely reporting success. Do not treat the original integration claims below as verified functionality. Builds, database migrations, integration tests and external OAuth credentials still need end-to-end verification before production deployment.
+
 ## 🗂️ Project Structure
 
 ```
