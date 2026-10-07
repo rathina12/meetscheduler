@@ -120,6 +120,15 @@ public class MeetingService {
             throw new AccessDeniedException("Only the organizer can update this meeting");
         }
 
+        LocalDateTime previousStartTime = meeting.getStartTime();
+        LocalDateTime previousEndTime = meeting.getEndTime();
+        LocalDateTime proposedStartTime = startTime != null ? startTime : previousStartTime;
+        LocalDateTime proposedEndTime = endTime != null ? endTime : previousEndTime;
+        if (proposedStartTime == null || proposedEndTime == null ||
+                !proposedEndTime.isAfter(proposedStartTime)) {
+            throw new IllegalArgumentException("Meeting end time must be after start time");
+        }
+
         if (title != null) meeting.setTitle(title);
         meeting.setDescription(description);
         if (startTime != null) meeting.setStartTime(startTime);
@@ -127,9 +136,9 @@ public class MeetingService {
         meeting.setLocation(location);
         if (meetingType != null) meeting.setMeetingType(meetingType);
         meeting.setMeetingLink(meetingLink);
-        // Keep status as SCHEDULED when updated (not RESCHEDULED)
-        // Only change to RESCHEDULED if time actually changed
-        if (startTime != null && !startTime.equals(meeting.getStartTime())) {
+        // Compare original values before mutation, including end-time-only changes.
+        if (!proposedStartTime.equals(previousStartTime) ||
+                !proposedEndTime.equals(previousEndTime)) {
             meeting.setStatus(Meeting.Status.RESCHEDULED);
         }
         meeting = meetingRepository.save(meeting);
