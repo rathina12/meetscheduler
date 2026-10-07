@@ -47,48 +47,16 @@ public class CalendarSyncService {
                 + "&access_type=offline&prompt=consent";
     }
 
-    @Transactional
+    /**
+     * OAuth integration is not implemented yet. Never fabricate access tokens or
+     * claim that calendar events were synchronized.
+     */
     public CalendarIntegration connectGoogle(String userEmail, String authCode) {
-        User user = getUser(userEmail);
-        CalendarIntegration integration = calendarIntegrationRepository
-                .findByUserIdAndProvider(user.getId(), CalendarIntegration.Provider.GOOGLE)
-                .orElseGet(() -> {
-                    CalendarIntegration ci = new CalendarIntegration();
-                    ci.setUser(user);
-                    ci.setProvider(CalendarIntegration.Provider.GOOGLE);
-                    return ci;
-                });
-        integration.setAccessToken("google_access_" + authCode);
-        integration.setRefreshToken("google_refresh_" + authCode);
-        integration.setTokenExpiry(LocalDateTime.now().plusHours(1));
-        integration.setSyncStatus(CalendarIntegration.SyncStatus.CONNECTED);
-        integration.setLastSyncedAt(LocalDateTime.now());
-        CalendarIntegration saved = calendarIntegrationRepository.save(integration);
-        log.info("Google Calendar connected for user: {}", userEmail);
-        return saved;
+        throw new UnsupportedOperationException("Google OAuth token exchange is not configured");
     }
 
-    @Transactional
     public Map<String, Object> syncCalendar(String userEmail) {
-        User user = getUser(userEmail);
-        List<CalendarIntegration> integrations = calendarIntegrationRepository.findByUserId(user.getId());
-        List<Meeting> meetings = meetingRepository.findAllMeetingsForUser(user);
-        int synced = 0;
-        for (CalendarIntegration integration : integrations) {
-            if (integration.getSyncStatus() == CalendarIntegration.SyncStatus.CONNECTED) {
-                try {
-                    log.info("Syncing {} meetings to {} for {}", meetings.size(), integration.getProvider(), userEmail);
-                    integration.setLastSyncedAt(LocalDateTime.now());
-                    calendarIntegrationRepository.save(integration);
-                    synced += meetings.size();
-                } catch (Exception e) {
-                    log.error("Sync failed for {}: {}", integration.getProvider(), e.getMessage());
-                    integration.setSyncStatus(CalendarIntegration.SyncStatus.ERROR);
-                    calendarIntegrationRepository.save(integration);
-                }
-            }
-        }
-        return Map.of("synced", synced, "timestamp", LocalDateTime.now().toString());
+        throw new UnsupportedOperationException("Google Calendar synchronization is not configured");
     }
 
     @Transactional
