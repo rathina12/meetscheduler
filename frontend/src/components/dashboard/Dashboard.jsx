@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [todayMeetings, setTodayMeetings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     Promise.all([meetingsAPI.getDashboard(), meetingsAPI.getToday()])
@@ -19,7 +20,7 @@ export default function Dashboard() {
         setStats(statsRes.data.data);
         setTodayMeetings(todayRes.data.data || []);
       })
-      .catch(() => {})
+      .catch(() => setError('We could not load your schedule. Please refresh and try again.'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -30,28 +31,27 @@ export default function Dashboard() {
   );
 
   const STAT_CARDS = [
-    { label: 'Total Meetings', value: stats?.totalMeetings ?? 0, icon: '📅', color: '#4f46e5', bg: '#eef2ff' },
-    { label: "Today's Meetings", value: stats?.todayMeetings ?? 0, icon: '🕐', color: '#0891b2', bg: '#e0f2fe' },
-    { label: 'Upcoming', value: stats?.upcomingMeetings ?? 0, icon: '⏰', color: '#059669', bg: '#dcfce7' },
-    { label: 'Pending Invites', value: stats?.pendingInvites ?? 0, icon: '📬', color: '#d97706', bg: '#fef3c7' },
+    { label: 'Total Meetings', value: stats?.totalMeetings ?? '—', icon: '📅', color: '#6156e8', bg: 'var(--primary-light)' },
+    { label: "Today's Meetings", value: stats?.todayMeetings ?? '—', icon: '🕐', color: '#0891b2', bg: '#e0f2fe' },
+    { label: 'Upcoming', value: stats?.upcomingMeetings ?? '—', icon: '⏰', color: '#059669', bg: '#dcfce7' },
+    { label: 'Pending Invites', value: stats?.pendingInvites ?? '—', icon: '📬', color: '#d97706', bg: '#fef3c7' },
   ];
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6" style={{ marginBottom: '24px' }}>
-        <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-            Good {getGreeting()}, {user?.name?.split(' ')[0]}! 👋
-          </h1>
-          <p className="text-muted text-sm" style={{ marginTop: '4px' }}>
-            {format(new Date(), 'EEEE, MMMM dd, yyyy')}
-          </p>
+      <section className="ms-hero" aria-label="Your meeting overview">
+        <div className="ms-header">
+          <div>
+            <span className="ms-kicker">Your workspace · {format(new Date(), 'EEEE')}</span>
+            <h1>Good {getGreeting()}, {user?.name?.split(' ')[0] || 'there'}!</h1>
+            <p>{format(new Date(), 'MMMM d, yyyy')} · Make room for what matters.</p>
+          </div>
+          <button className="btn" onClick={() => navigate('/meetings/new')}>
+            <Plus size={17} /> Schedule meeting
+          </button>
         </div>
-        <button className="btn btn-primary" onClick={() => navigate('/meetings/new')}>
-          <Plus size={16} /> New Meeting
-        </button>
-      </div>
+      </section>
+      {error && <div role="alert" className="ms-error">{error}</div>}
 
       {/* Stats */}
       <div className="stats-grid">
@@ -126,7 +126,7 @@ export default function Dashboard() {
 
 function MeetingRow({ meeting, showDate, onClick }) {
   return (
-    <div className="meeting-item" onClick={onClick} style={{ padding: '12px', gap: '12px' }}>
+    <div className="meeting-item" role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }} onClick={onClick} style={{ padding: '12px', gap: '12px' }}>
       <div className="meeting-time-block">
         <div className="time">{formatTime(meeting.startTime)}</div>
         {showDate && <div className="date">{formatDate(meeting.startTime)}</div>}
