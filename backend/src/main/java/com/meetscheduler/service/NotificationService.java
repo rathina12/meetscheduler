@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -58,6 +59,11 @@ public class NotificationService {
     public void markAsRead(Long notificationId, String userEmail) {
         Notification n = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new NoSuchElementException("Notification not found"));
+        var user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new NoSuchElementException("User not found"));
+        if (n.getUser() == null || !user.getId().equals(n.getUser().getId())) {
+            throw new AccessDeniedException("Cannot modify another user's notification");
+        }
         n.setReadStatus(true);
         notificationRepository.save(n);
     }

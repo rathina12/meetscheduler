@@ -61,7 +61,10 @@ public class MeetingService {
 
     @Transactional(readOnly = true)
     public Optional<Meeting> getMeetingById(Long id, String userEmail) {
-        return meetingRepository.findById(id);
+        User user = getUser(userEmail);
+        return meetingRepository.findById(id).filter(meeting ->
+                meeting.getOrganizer().getId().equals(user.getId()) ||
+                participantRepository.findByMeetingIdAndEmail(id, userEmail).isPresent());
     }
 
     @Transactional
@@ -73,6 +76,11 @@ public class MeetingService {
                                   LocalDate recurrenceEndDate, String organizerEmail,
                                   Boolean forceCreate) {
         User organizer = getUser(organizerEmail);
+
+        if (title == null || title.isBlank() || startTime == null || endTime == null ||
+                !endTime.isAfter(startTime)) {
+            throw new IllegalArgumentException("A title and valid meeting time interval are required");
+        }
 
         // Check conflicts — only WARN, don't block if forceCreate=true
         List<Meeting> conflicts = meetingRepository.findConflictingMeetings(
@@ -120,6 +128,25 @@ public class MeetingService {
             throw new AccessDeniedException("Only the organizer can update this meeting");
         }
 
+        LocalDateTime previousStartTime = meeting.getStartTime();
+        LocalDateTime previousEndTime = meeting.getEndTime();
+        LocalDateTime proposedStartTime = startTime != null ? startTime : previousStartTime;
+        LocalDateTime proposedEndTime = endTime != null ? endTime : previousEndTime;
+        if (proposedStartTime == null || proposedEndTime == null ||
+                !proposedEndTime.isAfter(proposedStartTime)) {
+            throw new IllegalArgumentException("Meeting end time must be after start time");
+        }
+
+        boolean timeChanged = !proposedStartTime.equals(previousStartTime) ||
+                !proposedEndTime.equals(previousEndTime);
+        if (timeChanged) {
+            List<Meeting> conflicts = meetingRepository.findConflictingMeetings(
+                    user.getId(), proposedStartTime, proposedEndTime);
+            if (conflicts.stream().anyMatch(conflict -> !conflict.getId().equals(id))) {
+                throw new IllegalStateException("TIME_CONFLICT: Another meeting occupies this time");
+            }
+        }
+
         if (title != null) meeting.setTitle(title);
         meeting.setDescription(description);
         if (startTime != null) meeting.setStartTime(startTime);
@@ -127,9 +154,8 @@ public class MeetingService {
         meeting.setLocation(location);
         if (meetingType != null) meeting.setMeetingType(meetingType);
         meeting.setMeetingLink(meetingLink);
-        // Keep status as SCHEDULED when updated (not RESCHEDULED)
-        // Only change to RESCHEDULED if time actually changed
-        if (startTime != null && !startTime.equals(meeting.getStartTime())) {
+        // Compare original values before mutation, including end-time-only changes.
+        if (timeChanged) {
             meeting.setStatus(Meeting.Status.RESCHEDULED);
         }
         meeting = meetingRepository.save(meeting);
@@ -207,16 +233,12 @@ public class MeetingService {
         if (participantOpt.isPresent()) {
             participant = participantOpt.get();
         } else {
-            // User might be organizer responding — create a participant record for them
-            Meeting meeting = meetingRepository.findById(meetingId)
-                    .orElseThrow(() -> new NoSuchElementException("Meeting not found"));
-            participant = Participant.builder()
-                    .meeting(meeting).email(userEmail).user(user)
-                    .responseStatus(Participant.ResponseStatus.PENDING)
-                    .build();
-            participant = participantRepository.save(participant);
+            throw new AccessDeniedException("You are not invited to this meeting");
         }
 
+        if (status == null) {
+            throw new IllegalArgumentException("RSVP status is required");
+        }
         participant.setResponseStatus(status);
         participant.setRespondedAt(LocalDateTime.now());
         participant = participantRepository.save(participant);

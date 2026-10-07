@@ -25,7 +25,7 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
 
     @Query("SELECT DISTINCT m FROM Meeting m LEFT JOIN m.participants p " +
            "WHERE (m.organizer = :user OR p.user = :user) " +
-           "AND m.startTime > :now AND m.status = 'SCHEDULED' ORDER BY m.startTime ASC")
+           "AND m.startTime > :now AND m.status IN ('SCHEDULED', 'RESCHEDULED') ORDER BY m.startTime ASC")
     List<Meeting> findUpcomingMeetings(@Param("user") User user, @Param("now") LocalDateTime now);
 
     @Query("SELECT COUNT(DISTINCT m) FROM Meeting m LEFT JOIN m.participants p " +

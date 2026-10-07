@@ -21,6 +21,7 @@ import Notifications from './components/notifications/Notifications';
 import Profile from './components/profile/Profile';
 
 import './styles/global.css';
+import './styles/redesign.css';
 
 // Edit wrapper that loads meeting data first
 function EditMeeting() {
